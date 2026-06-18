@@ -58,11 +58,11 @@ export class AutomationService {
    * 3. Begins the polling loop
    */
   async start(): Promise<void> {
-    this.logger.info('Authenticating with Google Sheets API');
-    await this.sheetPoller.authenticate();
-
     this.logger.info('Starting health check server', { port: this.config.healthCheckPort });
     this.healthCheckServer.start(this.config.healthCheckPort);
+
+    this.logger.info('Authenticating with Google Sheets API');
+    await this.sheetPoller.authenticate();
 
     this.running = true;
     this.setupSignalHandlers();

@@ -47,7 +47,9 @@ async function main(): Promise<void> {
     logger.error('Failed to start automation service', {
       error: error instanceof Error ? error.message : String(error),
     });
-    process.exit(1);
+    // Keep health server running so monitoring can detect the issue
+    healthCheckServer.updateStatus('unhealthy');
+    logger.warn('Health check server remains active on port ' + config.healthCheckPort);
   }
 }
 
