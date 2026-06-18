@@ -1,0 +1,16 @@
+services:
+  automation:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${HEALTH_CHECK_PORT:-3000}:${HEALTH_CHECK_PORT:-3000}"
+    volumes:
+      - ./credentials:/app/credentials:ro
+    environment:
+      - SHEET_ID
+      - WORKSHEET_NAME
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials/service-account.json
+      - BUFFER_ACCESS_TOKEN
+      - BUFFER_TIKTOK_PROFILE_ID
+      - POLLING_INTERVAL_SECONDS
+      - HEALTH_CHECK_PORT

@@ -1,0 +1,9 @@
+{
+  "sheetId": "your-google-sheet-id-here",
+  "worksheetName": "Sheet1",
+  "googleCredentialsPath": "./credentials/service-account.json",
+  "bufferAccessToken": "your-buffer-access-token",
+  "bufferTikTokProfileId": "your-buffer-tiktok-profile-id",
+  "pollingIntervalSeconds": 60,
+  "healthCheckPort": 3000
+}
