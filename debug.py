@@ -5,8 +5,7 @@ user = "aichaguimaoune"
 password = "Hamza@19951995"
 
 commands = [
-    "pm2 logs sheet-to-tiktok --lines 30 --nostream",
-    "cat ~/sheet-to-tiktok-automation/ecosystem.config.cjs",
+    "pm2 logs sheet-to-tiktok --lines 20 --nostream",
 ]
 
 client = paramiko.SSHClient()
@@ -22,6 +21,5 @@ for cmd in commands:
         print(out.strip())
     if err.strip():
         print(f"ERR: {err.strip()}")
-    print()
 
 client.close()

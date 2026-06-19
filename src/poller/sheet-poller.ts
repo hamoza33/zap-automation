@@ -1,7 +1,42 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { AppConfig, ISheetPoller, SheetRow } from '../types.js';
+
+/**
+ * File path for tracking processed rows locally (avoids needing a Status column in the sheet).
+ */
+const PROCESSED_ROWS_FILE = resolve(process.cwd(), 'processed-rows.json');
+
+/**
+ * Load processed row numbers from disk.
+ */
+function loadProcessedRows(): Set<number> {
+  try {
+    if (existsSync(PROCESSED_ROWS_FILE)) {
+      const data = JSON.parse(readFileSync(PROCESSED_ROWS_FILE, 'utf-8'));
+      return new Set(Array.isArray(data) ? data : []);
+    }
+  } catch {
+    // Start fresh if corrupt
+  }
+  return new Set();
+}
+
+/**
+ * Save processed row numbers to disk.
+ */
+function saveProcessedRows(rows: Set<number>): void {
+  try {
+    writeFileSync(PROCESSED_ROWS_FILE, JSON.stringify([...rows]), 'utf-8');
+  } catch {
+    // Non-fatal
+  }
+}
+
+/** In-memory set of processed rows */
+let processedRowNumbers = loadProcessedRows();
 
 /**
  * Filters an array of SheetRow objects to include only those with an empty or null
@@ -66,22 +101,27 @@ export class SheetPoller implements ISheetPoller {
     const unprocessedRows: SheetRow[] = [];
 
     // Column mapping for user's sheet:
-    // A = Video URL, B = Title, C = Caption, D = Tags, E = Status
-    // We read by header name. If headers don't match, fall back to raw cell index.
+    // A = Video URL, B = Title, C = Caption, D = Tags
+    // We track processed rows locally (no Status column needed in sheet).
     for (const row of rows) {
-      // Try to read by various possible header names
-      const videoUrl = row.get('Videos') ?? row.get('Video') ?? row.get('Video URL') ?? row.get('video') ?? (row as any)._rawData?.[0] ?? '';
-      const title = row.get('Titles') ?? row.get('Title') ?? row.get('title') ?? (row as any)._rawData?.[1] ?? '';
-      const caption = row.get('Caption') ?? row.get('caption') ?? row.get('Captions') ?? (row as any)._rawData?.[2] ?? '';
-      const tags = row.get('Tags') ?? row.get('tags') ?? row.get('Hashtags') ?? (row as any)._rawData?.[3] ?? '';
-      const status = row.get('Status') ?? row.get('status') ?? (row as any)._rawData?.[4] ?? '';
+      // Skip rows we've already processed
+      if (processedRowNumbers.has(row.rowNumber)) {
+        continue;
+      }
+
+      // Try to read by various possible header names, fall back to raw cell index
+      const rawData = (row as any)._rawData || [];
+      const videoUrl = row.get('Videos') ?? row.get('Video') ?? row.get('Video URL') ?? row.get('video') ?? rawData[0] ?? '';
+      const title = row.get('Titles') ?? row.get('Title') ?? row.get('title') ?? rawData[1] ?? '';
+      const caption = row.get('Caption') ?? row.get('caption') ?? row.get('Captions') ?? rawData[2] ?? '';
+      const tags = row.get('Tags') ?? row.get('tags') ?? row.get('Hashtags') ?? rawData[3] ?? '';
 
       // Combine title + caption + tags as the full caption text for Buffer
       const parts = [title, caption, tags].filter(p => p && p.trim() !== '');
       const captionText = parts.join('\n');
 
-      // Only include rows with an empty status column AND a video URL present
-      if ((!status || status.trim() === '') && videoUrl && videoUrl.trim() !== '') {
+      // Only include rows with a video URL present
+      if (videoUrl && videoUrl.trim() !== '') {
         unprocessedRows.push({
           rowNumber: row.rowNumber,
           captionText,
@@ -99,112 +139,22 @@ export class SheetPoller implements ISheetPoller {
   }
 
   /**
-   * Writes "processing" to Column C for the given row as an optimistic lock
-   * before handing off to Buffer. This prevents duplicate processing if another
-   * instance picks up the same row.
-   *
-   * Retries up to 3 times on failure. Throws if all retries are exhausted.
+   * Marks a row as "processing" locally. No longer writes to the sheet.
    */
   async markRowProcessing(rowNumber: number): Promise<void> {
-    await this.writeStatusToRow(rowNumber, 'processing');
+    // Just a no-op marker — we track completion in markRowProcessed
   }
 
   /**
-   * Marks a row as processed by writing a status value to Column C (Status).
-   * Format: "success", "error:<detail>", or "failed:<detail>"
-   *
-   * Retries up to 3 times on failure. Throws if all retries are exhausted
-   * (caller is responsible for logging row as requiring manual review).
+   * Marks a row as processed locally by adding its row number to the tracked set.
    */
   async markRowProcessed(
     rowNumber: number,
     status: 'success' | 'error' | 'failed',
-    detail?: string
+    _detail?: string
   ): Promise<void> {
-    if (!this.doc) {
-      throw new Error('SheetPoller not authenticated. Call authenticate() first.');
-    }
-
-    const sheet = this.doc.sheetsByTitle[this.config.worksheetName];
-    if (!sheet) {
-      throw new Error(`Worksheet "${this.config.worksheetName}" not found in spreadsheet.`);
-    }
-
-    let statusValue: string;
-    if (status === 'success') {
-      statusValue = 'success';
-    } else if (status === 'error') {
-      statusValue = detail ? `error:${detail}` : 'error:unknown';
-    } else {
-      statusValue = detail ? `failed:${detail}` : 'failed:unknown';
-    }
-
-    await this.writeStatusToRow(rowNumber, statusValue);
+    processedRowNumbers.add(rowNumber);
+    saveProcessedRows(processedRowNumbers);
   }
 
-  /**
-   * Internal helper that writes a value to the Status column for a given row number.
-   * Implements retry logic: up to 3 attempts before throwing.
-   */
-  private async writeStatusToRow(rowNumber: number, value: string): Promise<void> {
-    if (!this.doc) {
-      throw new Error('SheetPoller not authenticated. Call authenticate() first.');
-    }
-
-    const sheet = this.doc.sheetsByTitle[this.config.worksheetName];
-    if (!sheet) {
-      throw new Error(`Worksheet "${this.config.worksheetName}" not found in spreadsheet.`);
-    }
-
-    const maxRetries = 3;
-    let lastError: Error | null = null;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const rows = await sheet.getRows();
-        const targetRow = rows.find(row => row.rowNumber === rowNumber);
-
-        if (!targetRow) {
-          throw new Error(`Row ${rowNumber} not found in worksheet "${this.config.worksheetName}".`);
-        }
-
-        targetRow.set('Status', value);
-        // Also try raw cell index if 'Status' header doesn't exist
-        if (!(targetRow as any)._sheet?.headerValues?.includes('Status')) {
-          // Write to column E (index 4) as fallback
-          const rawData = (targetRow as any)._rawData;
-          if (rawData) {
-            while (rawData.length < 5) rawData.push('');
-            rawData[4] = value;
-          }
-        }
-        await targetRow.save();
-        return; // Success — exit retry loop
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err));
-
-        // If it's a "row not found" error, don't retry — it won't resolve itself
-        if (lastError.message.includes('not found in worksheet')) {
-          throw lastError;
-        }
-
-        // If we haven't exhausted retries, wait briefly before retrying
-        if (attempt < maxRetries) {
-          await this.delay(1000);
-        }
-      }
-    }
-
-    // All retries exhausted
-    throw new Error(
-      `Failed to write status "${value}" to row ${rowNumber} after ${maxRetries} attempts: ${lastError?.message}`
-    );
-  }
-
-  /**
-   * Utility delay function for retry backoff.
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 }
