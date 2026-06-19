@@ -1,14 +1,14 @@
 import { layout } from './layout.js';
 import type { ActivityEntry, ServiceStats } from '../activity-store.js';
+import type { WorkflowState } from '../../workflows/workflow-manager.js';
 
-export function dashboardPage(stats: ServiceStats, recentActivities: ActivityEntry[]): string {
-  const statusColor = stats.serviceState === 'running'
-    ? 'green'
-    : stats.serviceState === 'paused'
-      ? 'yellow'
-      : 'red';
-
-  const statusLabel = stats.serviceState.charAt(0).toUpperCase() + stats.serviceState.slice(1);
+export function dashboardPage(
+  stats: ServiceStats,
+  recentActivities: ActivityEntry[],
+  workflows: WorkflowState[] = []
+): string {
+  const runningCount = workflows.filter(w => w.status === 'running').length;
+  const totalWorkflows = workflows.length;
 
   const uptime = getUptime(stats.startTime);
   const totalProcessed = stats.successCount + stats.errorCount + stats.failedCount;
@@ -23,11 +23,29 @@ export function dashboardPage(stats: ServiceStats, recentActivities: ActivityEnt
   const activityRows = recentActivities.map(a => `
     <tr>
       <td style="font-size: 0.85rem; color: #8888a0;">${formatTime(a.timestamp)}</td>
+      <td style="font-size: 0.85rem; color: #e0e0e0;">${escapeHtml(a.workflowName || 'Unknown')}</td>
       <td>#${a.rowNumber}</td>
       <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(a.caption.substring(0, 50))}</td>
       <td><span class="badge badge-${a.status}">${a.status}</span></td>
     </tr>
   `).join('');
+
+  const workflowCards = workflows.map(wf => {
+    const statusColor = wf.status === 'running' ? 'green' : wf.status === 'error' ? 'red' : 'yellow';
+    const statusLabel = wf.status.charAt(0).toUpperCase() + wf.status.slice(1);
+    const wfLastPoll = wf.lastPollTime ? formatTime(wf.lastPollTime) : 'Never';
+    return `
+      <div class="card" style="min-width: 200px;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem;">
+          <span class="status-dot status-${statusColor}"></span>
+          <strong style="color: #fff; font-size: 0.9rem;">${escapeHtml(wf.name)}</strong>
+        </div>
+        <div style="font-size: 0.8rem; color: #8888a0;">
+          <div>${statusLabel} · ${wf.processedCount} rows · Last: ${wfLastPoll}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
 
   return layout({
     title: 'Dashboard',
@@ -39,58 +57,24 @@ export function dashboardPage(stats: ServiceStats, recentActivities: ActivityEnt
           <div>
             <h1 style="font-size: 1.5rem; color: #fff;">Dashboard</h1>
             <p style="color: #8888a0; font-size: 0.9rem;">
-              <span class="status-dot status-${statusColor}"></span>
-              Service ${statusLabel}
+              ${runningCount}/${totalWorkflows} workflows running
             </p>
           </div>
-          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <form method="POST" action="/api/control" style="display:inline;">
-              <input type="hidden" name="action" value="start">
-              <button type="submit" class="btn btn-success" ${stats.serviceState === 'running' ? 'disabled' : ''}>▶ Start</button>
-            </form>
-            <form method="POST" action="/api/control" style="display:inline;">
-              <input type="hidden" name="action" value="stop">
-              <button type="submit" class="btn btn-danger" ${stats.serviceState === 'stopped' ? 'disabled' : ''}>⏹ Stop</button>
-            </form>
-            <form method="POST" action="/api/control" style="display:inline;">
-              <input type="hidden" name="action" value="poll_now">
-              <button type="submit" class="btn btn-secondary">🔄 Poll Now</button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Workflow Visualization -->
-        <div class="card" style="margin-bottom: 1.5rem;">
-          <div class="card-title">Workflow</div>
-          <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem 0; flex-wrap: wrap;">
-            <div style="background: #1a1a2e; border: 2px solid #0f3460; border-radius: 12px; padding: 1rem 1.5rem; text-align: center; min-width: 140px;">
-              <div style="font-size: 1.5rem;">📊</div>
-              <div style="font-size: 0.85rem; color: #fff; margin-top: 0.25rem;">Google Sheets</div>
-              <div style="font-size: 0.75rem; color: #8888a0;">Source</div>
-            </div>
-            <div style="color: #e94560; font-size: 1.5rem;">→</div>
-            <div style="background: #1a1a2e; border: 2px solid #e94560; border-radius: 12px; padding: 1rem 1.5rem; text-align: center; min-width: 140px;">
-              <div style="font-size: 1.5rem;">⚙️</div>
-              <div style="font-size: 0.85rem; color: #fff; margin-top: 0.25rem;">Process & Validate</div>
-              <div style="font-size: 0.75rem; color: #8888a0;">Automation</div>
-            </div>
-            <div style="color: #e94560; font-size: 1.5rem;">→</div>
-            <div style="background: #1a1a2e; border: 2px solid #0f3460; border-radius: 12px; padding: 1rem 1.5rem; text-align: center; min-width: 140px;">
-              <div style="font-size: 1.5rem;">🎵</div>
-              <div style="font-size: 0.85rem; color: #fff; margin-top: 0.25rem;">Buffer / TikTok</div>
-              <div style="font-size: 0.75rem; color: #8888a0;">Destination</div>
-            </div>
-          </div>
+          <a href="/workflows" class="btn btn-primary" style="font-size: 0.85rem;">⚙️ Manage Workflows</a>
         </div>
 
         <!-- Stats Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+          <div class="card">
+            <div class="card-title">Workflows</div>
+            <div style="font-size: 1.3rem; color: #fff;">${runningCount} <span style="font-size: 0.8rem; color: #8888a0;">/ ${totalWorkflows}</span></div>
+          </div>
           <div class="card">
             <div class="card-title">Last Poll</div>
             <div style="font-size: 1.3rem; color: #fff;">${lastPoll}</div>
           </div>
           <div class="card">
-            <div class="card-title">Rows Processed Today</div>
+            <div class="card-title">Rows Today</div>
             <div style="font-size: 1.3rem; color: #fff;">${stats.rowsProcessedToday}</div>
           </div>
           <div class="card">
@@ -103,6 +87,20 @@ export function dashboardPage(stats: ServiceStats, recentActivities: ActivityEnt
           </div>
         </div>
 
+        <!-- Workflow Overview -->
+        ${workflows.length > 0 ? `
+        <div style="margin-bottom: 1.5rem;">
+          <h2 style="font-size: 1rem; color: #8888a0; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">Workflow Status</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75rem;">
+            ${workflowCards}
+          </div>
+        </div>
+        ` : `
+        <div class="card" style="margin-bottom: 1.5rem; text-align: center; padding: 2rem;">
+          <p style="color: #8888a0;">No workflows configured. <a href="/workflows" style="color: #e94560;">Create one</a> to get started.</p>
+        </div>
+        `}
+
         <!-- Recent Activity -->
         <div class="card">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
@@ -114,6 +112,7 @@ export function dashboardPage(stats: ServiceStats, recentActivities: ActivityEnt
               <thead>
                 <tr>
                   <th>Time</th>
+                  <th>Workflow</th>
                   <th>Row</th>
                   <th>Caption</th>
                   <th>Status</th>
@@ -122,7 +121,7 @@ export function dashboardPage(stats: ServiceStats, recentActivities: ActivityEnt
               <tbody>${activityRows}</tbody>
             </table>
           ` : `
-            <p style="color: #8888a0; text-align: center; padding: 2rem;">No activity yet. The service will log entries here as it processes rows.</p>
+            <p style="color: #8888a0; text-align: center; padding: 2rem;">No activity yet. Workflows will log entries here as they process rows.</p>
           `}
         </div>
       </div>

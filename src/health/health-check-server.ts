@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response } from 'express';
 import type { Server } from 'http';
 import type { HealthStatus, IHealthCheckServer } from '../types.js';
 import { createDashboardRouter } from '../dashboard/dashboard-routes.js';
+import type { WorkflowManager } from '../workflows/workflow-manager.js';
 
 /**
  * HTTP health check server that exposes a GET /health endpoint.
@@ -16,8 +17,10 @@ export class HealthCheckServer implements IHealthCheckServer {
   private currentStatus: HealthStatus['status'] = 'healthy';
   private consecutiveErrors: number = 0;
   private errorTimestamps: number[] = [];
+  private workflowManager: WorkflowManager;
 
-  constructor() {
+  constructor(workflowManager: WorkflowManager) {
+    this.workflowManager = workflowManager;
     this.app = express();
     this.setupRoutes();
   }
@@ -40,8 +43,8 @@ export class HealthCheckServer implements IHealthCheckServer {
       res.json(response);
     });
 
-    // Mount dashboard router (handles /, /login, /activity, /settings, /api/*)
-    this.app.use(createDashboardRouter());
+    // Mount dashboard router (handles /, /login, /activity, /workflows, /api/*)
+    this.app.use(createDashboardRouter(this.workflowManager));
   }
 
   /**

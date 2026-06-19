@@ -191,6 +191,8 @@ export class AutomationService {
             videoUrl: row.videoUrl,
             status: 'error',
             details: errorDetail,
+            workflowId: 'legacy',
+            workflowName: 'Legacy Service',
           });
 
           try {
@@ -231,6 +233,8 @@ export class AutomationService {
             videoUrl: row.videoUrl,
             status: 'success',
             details: `Post scheduled (ID: ${publishResult.postId || 'N/A'})`,
+            workflowId: 'legacy',
+            workflowName: 'Legacy Service',
           });
 
           try {
@@ -256,6 +260,8 @@ export class AutomationService {
             videoUrl: row.videoUrl,
             status: 'failed',
             details: publishResult.error ?? 'Unknown publish error',
+            workflowId: 'legacy',
+            workflowName: 'Legacy Service',
           });
 
           try {

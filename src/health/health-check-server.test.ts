@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { HealthCheckServer } from './health-check-server.js';
+import { WorkflowManager } from '../workflows/workflow-manager.js';
 
 describe('HealthCheckServer', () => {
   let server: HealthCheckServer;
@@ -13,7 +14,8 @@ describe('HealthCheckServer', () => {
   }
 
   beforeEach(() => {
-    server = new HealthCheckServer();
+    const workflowManager = new WorkflowManager();
+    server = new HealthCheckServer(workflowManager);
     server.start(TEST_PORT);
   });
 

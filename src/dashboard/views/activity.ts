@@ -1,5 +1,6 @@
 import { layout } from './layout.js';
 import type { ActivityEntry } from '../activity-store.js';
+import type { WorkflowState } from '../../workflows/workflow-manager.js';
 
 interface ActivityPageData {
   entries: ActivityEntry[];
@@ -7,14 +8,17 @@ interface ActivityPageData {
   page: number;
   totalPages: number;
   statusFilter: string;
+  workflowFilter: string;
+  workflows: WorkflowState[];
 }
 
 export function activityPage(data: ActivityPageData): string {
-  const { entries, total, page, totalPages, statusFilter } = data;
+  const { entries, total, page, totalPages, statusFilter, workflowFilter, workflows } = data;
 
   const rows = entries.map(a => `
     <tr>
       <td style="font-size: 0.85rem; color: #8888a0; white-space: nowrap;">${formatTimeFull(a.timestamp)}</td>
+      <td style="font-size: 0.85rem; color: #e0e0e0;">${escapeHtml(a.workflowName || 'Unknown')}</td>
       <td>#${a.rowNumber}</td>
       <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(a.caption)}">${escapeHtml(a.caption.substring(0, 60))}</td>
       <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -30,7 +34,15 @@ export function activityPage(data: ActivityPageData): string {
     return `<option value="${s}" ${selected}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`;
   }).join('');
 
-  const paginationHtml = buildPagination(page, totalPages, statusFilter);
+  const workflowOptions = [
+    `<option value="all" ${workflowFilter === 'all' ? 'selected' : ''}>All Workflows</option>`,
+    ...workflows.map(wf => {
+      const selected = wf.id === workflowFilter ? 'selected' : '';
+      return `<option value="${wf.id}" ${selected}>${escapeHtml(wf.name)}</option>`;
+    }),
+  ].join('');
+
+  const paginationHtml = buildPagination(page, totalPages, statusFilter, workflowFilter);
 
   return layout({
     title: 'Activity Log',
@@ -42,10 +54,14 @@ export function activityPage(data: ActivityPageData): string {
             <h1 style="font-size: 1.5rem; color: #fff;">Activity Log</h1>
             <p style="color: #8888a0; font-size: 0.85rem;">${total} total entries</p>
           </div>
-          <form method="GET" action="/activity" style="display: flex; align-items: center; gap: 0.5rem;">
-            <label style="margin-bottom: 0; white-space: nowrap;">Filter:</label>
+          <form method="GET" action="/activity" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <label style="margin-bottom: 0; white-space: nowrap;">Status:</label>
             <select name="status" onchange="this.form.submit()" style="width: auto; min-width: 120px;">
               ${filterOptions}
+            </select>
+            <label style="margin-bottom: 0; white-space: nowrap;">Workflow:</label>
+            <select name="workflow" onchange="this.form.submit()" style="width: auto; min-width: 150px;">
+              ${workflowOptions}
             </select>
             <noscript><button type="submit" class="btn btn-secondary" style="padding: 0.4rem 0.8rem;">Go</button></noscript>
           </form>
@@ -57,6 +73,7 @@ export function activityPage(data: ActivityPageData): string {
               <thead>
                 <tr>
                   <th>Time</th>
+                  <th>Workflow</th>
                   <th>Row #</th>
                   <th>Caption</th>
                   <th>Video URL</th>
@@ -77,11 +94,11 @@ export function activityPage(data: ActivityPageData): string {
   });
 }
 
-function buildPagination(page: number, totalPages: number, statusFilter: string): string {
+function buildPagination(page: number, totalPages: number, statusFilter: string, workflowFilter: string): string {
   if (totalPages <= 1) return '';
 
   const links: string[] = [];
-  const baseUrl = `/activity?status=${statusFilter}`;
+  const baseUrl = `/activity?status=${statusFilter}&workflow=${workflowFilter}`;
 
   if (page > 1) {
     links.push(`<a href="${baseUrl}&page=${page - 1}">← Prev</a>`);

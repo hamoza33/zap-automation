@@ -1,56 +1,51 @@
 import { Logger } from './logger/logger.js';
-import { ConfigLoader, ConfigError } from './config/config-loader.js';
-import { SheetPoller } from './poller/sheet-poller.js';
-import { RowValidator } from './validator/row-validator.js';
-import { BufferPublisher } from './publisher/buffer-publisher.js';
 import { HealthCheckServer } from './health/health-check-server.js';
-import { AutomationService } from './service/automation-service.js';
+import { WorkflowManager } from './workflows/workflow-manager.js';
 
 async function main(): Promise<void> {
   const logger = new Logger();
+  const port = parseInt(process.env['HEALTH_CHECK_PORT'] || '3000') || 3000;
 
-  // Load and validate configuration
-  let config;
+  logger.info('Starting Sheet-to-TikTok Multi-Workflow Service');
+
+  // Create the workflow manager
+  const workflowManager = new WorkflowManager();
+
+  // Create and start the health/dashboard server
+  const healthCheckServer = new HealthCheckServer(workflowManager);
+  healthCheckServer.start(port);
+  logger.info('Dashboard and health server started', { port });
+
+  // Initialize workflows (loads from disk, migrates legacy env, starts enabled ones)
   try {
-    const configLoader = new ConfigLoader();
-    config = configLoader.load();
+    await workflowManager.initialize();
+    const workflows = workflowManager.getWorkflows();
+    logger.info('Workflows initialized', {
+      total: workflows.length,
+      running: workflows.filter(w => w.status === 'running').length,
+    });
   } catch (error) {
-    if (error instanceof ConfigError) {
-      logger.error('Failed to load configuration', { errors: error.errors });
-    } else {
-      logger.error('Unexpected error loading configuration', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-    process.exit(1);
-  }
-
-  // Instantiate all dependencies
-  const sheetPoller = new SheetPoller(config);
-  const rowValidator = new RowValidator();
-  const bufferPublisher = new BufferPublisher(config.bufferAccessToken, config.bufferTikTokProfileId);
-  const healthCheckServer = new HealthCheckServer();
-
-  // Create and start the automation service
-  const service = new AutomationService({
-    config,
-    sheetPoller,
-    rowValidator,
-    bufferPublisher,
-    healthCheckServer,
-    logger,
-  });
-
-  try {
-    await service.start();
-  } catch (error) {
-    logger.error('Failed to start automation service', {
+    logger.error('Failed to initialize workflows', {
       error: error instanceof Error ? error.message : String(error),
     });
-    // Keep health server running so monitoring can detect the issue
-    healthCheckServer.updateStatus('unhealthy');
-    logger.warn('Health check server remains active on port ' + config.healthCheckPort);
+    healthCheckServer.updateStatus('degraded');
   }
+
+  // Graceful shutdown
+  const shutdown = async () => {
+    logger.info('Received shutdown signal, stopping gracefully...');
+    const workflows = workflowManager.getWorkflows();
+    for (const wf of workflows) {
+      if (wf.status === 'running') {
+        workflowManager.stopWorkflow(wf.id);
+      }
+    }
+    healthCheckServer.stop();
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 main().catch((err) => {

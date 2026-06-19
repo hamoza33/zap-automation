@@ -4,7 +4,7 @@
 
 export interface LayoutOptions {
   title: string;
-  activePage?: 'dashboard' | 'activity' | 'settings' | 'login';
+  activePage?: 'dashboard' | 'activity' | 'settings' | 'workflows' | 'login';
   showNav?: boolean;
   content: string;
 }
@@ -26,7 +26,7 @@ export function layout(options: LayoutOptions): string {
         <div class="nav-links">
           ${navItem('/', 'Dashboard', 'dashboard')}
           ${navItem('/activity', 'Activity', 'activity')}
-          ${navItem('/settings', 'Settings', 'settings')}
+          ${navItem('/workflows', 'Workflows', 'workflows')}
           <a href="/logout">Logout</a>
         </div>
       </nav>`

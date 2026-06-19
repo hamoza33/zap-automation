@@ -12,6 +12,8 @@ export interface ActivityEntry {
   videoUrl: string;
   status: 'success' | 'error' | 'failed' | 'processing';
   details: string;
+  workflowId: string;
+  workflowName: string;
 }
 
 /**
@@ -97,16 +99,20 @@ export function addActivity(entry: Omit<ActivityEntry, 'id' | 'timestamp'>): voi
 }
 
 /**
- * Get paginated activity entries with optional status filter.
+ * Get paginated activity entries with optional status and workflow filter.
  */
 export function getActivities(
   page: number = 1,
   perPage: number = 25,
-  statusFilter: string = 'all'
+  statusFilter: string = 'all',
+  workflowFilter: string = 'all'
 ): { entries: ActivityEntry[]; total: number; page: number; totalPages: number } {
   let filtered = activities;
   if (statusFilter && statusFilter !== 'all') {
-    filtered = activities.filter(a => a.status === statusFilter);
+    filtered = filtered.filter(a => a.status === statusFilter);
+  }
+  if (workflowFilter && workflowFilter !== 'all') {
+    filtered = filtered.filter(a => a.workflowId === workflowFilter);
   }
 
   const total = filtered.length;
