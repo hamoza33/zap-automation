@@ -12,8 +12,8 @@ const CREATE_POST_MUTATION = `
       input: {
         text: $text
         channelId: $channelId
-        schedulingType: automatic
-        mode: addToQueue
+        schedulingType: direct
+        mode: share
         assets: [{ video: { url: $videoUrl } }]
       }
     ) {
