@@ -1,0 +1,112 @@
+{
+  "activities": [
+    {
+      "id": "11f53472-164c-475f-a751-a29eb69a9960",
+      "timestamp": "2026-06-26T00:56:41.167Z",
+      "rowNumber": 3,
+      "caption": "Valid caption",
+      "videoUrl": "https://example.com/v.mp4",
+      "status": "success",
+      "details": "Post scheduled (ID: post-123)",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    },
+    {
+      "id": "8442c1c2-566b-48c5-a934-897a1d17f745",
+      "timestamp": "2026-06-26T00:56:41.167Z",
+      "rowNumber": 2,
+      "caption": "",
+      "videoUrl": "invalid",
+      "status": "error",
+      "details": "captionText: empty",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    },
+    {
+      "id": "02206423-28ec-4fc1-8c7c-787950c3a82b",
+      "timestamp": "2026-06-26T00:56:41.165Z",
+      "rowNumber": 4,
+      "caption": "Third",
+      "videoUrl": "https://c.com/3.mp4",
+      "status": "success",
+      "details": "Post scheduled (ID: id-Third)",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    },
+    {
+      "id": "1bb607bc-2ebc-4ad4-bc43-79d52f6d78ba",
+      "timestamp": "2026-06-26T00:56:41.165Z",
+      "rowNumber": 3,
+      "caption": "Second",
+      "videoUrl": "https://b.com/2.mp4",
+      "status": "success",
+      "details": "Post scheduled (ID: id-Second)",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    },
+    {
+      "id": "ac00f56f-8ad4-4c5f-beef-76483a05e377",
+      "timestamp": "2026-06-26T00:56:41.165Z",
+      "rowNumber": 2,
+      "caption": "First",
+      "videoUrl": "https://a.com/1.mp4",
+      "status": "success",
+      "details": "Post scheduled (ID: id-First)",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    },
+    {
+      "id": "471a6f94-a196-49d2-ace0-3db8d2f9ed7b",
+      "timestamp": "2026-06-26T00:56:41.161Z",
+      "rowNumber": 6,
+      "caption": "Caption",
+      "videoUrl": "https://example.com/v.mp4",
+      "status": "success",
+      "details": "Post scheduled (ID: post-123)",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    },
+    {
+      "id": "af272d09-7504-4cd4-9988-c3adc4fc075d",
+      "timestamp": "2026-06-26T00:56:41.158Z",
+      "rowNumber": 5,
+      "caption": "Test caption",
+      "videoUrl": "https://example.com/v.mp4",
+      "status": "failed",
+      "details": "Buffer API timeout",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    },
+    {
+      "id": "edf41602-c20a-435f-b60a-42dbc4c92113",
+      "timestamp": "2026-06-26T00:56:41.135Z",
+      "rowNumber": 3,
+      "caption": "",
+      "videoUrl": "not-a-url",
+      "status": "error",
+      "details": "captionText: Caption text must contain at least one non-whitespace character; videoUrl: Video URL must start with \"http://\" or \"https://\"",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    },
+    {
+      "id": "3c93c727-a98c-41cd-8e3c-789a82d29406",
+      "timestamp": "2026-06-26T00:56:41.125Z",
+      "rowNumber": 2,
+      "caption": "Hello TikTok",
+      "videoUrl": "https://example.com/video.mp4",
+      "status": "success",
+      "details": "Post scheduled (ID: post-123)",
+      "workflowId": "legacy",
+      "workflowName": "Legacy Service"
+    }
+  ],
+  "stats": {
+    "lastPollTime": "2026-06-26T00:57:46.185Z",
+    "rowsProcessedToday": 9,
+    "successCount": 6,
+    "errorCount": 2,
+    "failedCount": 1,
+    "serviceState": "running",
+    "startTime": "2026-06-26T00:56:31.100Z"
+  }
+}

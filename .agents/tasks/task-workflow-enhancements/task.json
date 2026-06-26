@@ -1,0 +1,14 @@
+{
+  "task_id": "task-workflow-enhancements",
+  "task_description": "Add workflow duplication, default Google Service Account JSON, mark existing rows as processed on new sheet, activity log enhancement with TikTok link and Buffer username, and Buffer API tester in settings",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "TypeScript compiles cleanly (npx tsc --noEmit). All 117 tests pass (npx vitest --run). No new tests added for new logic but existing test suite unbroken. Semantic review passed (v1, no verdict = approved)."
+  }
+}

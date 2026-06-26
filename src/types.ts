@@ -51,6 +51,8 @@ export interface PublishResult {
   postId?: string;
   error?: string;
   attempts: number;
+  tiktokVideoLink?: string;
+  bufferUsername?: string;
 }
 
 /**
@@ -84,6 +86,7 @@ export interface IConfigLoader {
 export interface ISheetPoller {
   authenticate(): Promise<void>;
   fetchUnprocessedRows(): Promise<SheetRow[]>;
+  fetchAllRowNumbers(): Promise<number[]>;
   markRowProcessing(rowNumber: number): Promise<void>;
   markRowProcessed(rowNumber: number, status: 'success' | 'error' | 'failed', detail?: string): Promise<void>;
 }
