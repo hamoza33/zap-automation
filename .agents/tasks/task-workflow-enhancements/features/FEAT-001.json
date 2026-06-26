@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Environment setup - install dependencies and verify the project builds and existing tests pass",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Run npm install in /projects/sandbox/zap-automation",
     "Run npx tsc --noEmit to confirm TypeScript compiles without errors",
@@ -18,5 +18,5 @@
     "npx vitest --run"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Node.js was not pre-installed; installed via mise (node@20.20.2). Fixed pre-existing TS errors in dashboard-routes.ts (req.params.id typed as string | string[] by newer @types/express-serve-static-core). Fixed pre-existing test failures in sheet-poller.test.ts where implementation was a local-only no-op but tests expected sheet writes with retry logic. Use 'eval \"$(mise activate bash)\"' before npm/node commands."
 }
