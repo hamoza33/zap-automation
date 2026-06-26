@@ -2,6 +2,7 @@ import { GraphQLClient } from 'graphql-request';
 import { IBufferPublisher, PublishResult } from '../types.js';
 
 const BUFFER_API_URL = 'https://api.buffer.com';
+const BUFFER_REST_API_URL = 'https://api.bufferapp.com/1';
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5_000;
@@ -21,6 +22,7 @@ const CREATE_POST_MUTATION = `
         post {
           id
           text
+          url
         }
       }
       ... on MutationError {
@@ -32,9 +34,16 @@ const CREATE_POST_MUTATION = `
 
 interface CreatePostSuccessResponse {
   createPost: {
-    post?: { id: string; text: string };
+    post?: { id: string; text: string; url?: string };
     message?: string;
   };
+}
+
+export interface BufferTestResult {
+  success: boolean;
+  username?: string;
+  channels?: Array<{ id: string; service: string; formatted_username: string }>;
+  error?: string;
 }
 
 /**
@@ -55,6 +64,58 @@ export class BufferPublisher implements IBufferPublisher {
     });
   }
 
+  /**
+   * Test a Buffer access token by calling the REST API.
+   * Returns user info and connected channels/profiles.
+   */
+  static async testConnection(accessToken: string): Promise<BufferTestResult> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      try {
+        // Fetch user info
+        const userResponse = await fetch(
+          `${BUFFER_REST_API_URL}/user.json?access_token=${encodeURIComponent(accessToken)}`,
+          { signal: controller.signal }
+        );
+
+        if (!userResponse.ok) {
+          const errorText = await userResponse.text().catch(() => 'Unknown error');
+          return { success: false, error: `Buffer API returned ${userResponse.status}: ${errorText}` };
+        }
+
+        const userData = await userResponse.json() as Record<string, unknown>;
+        const username = String(userData.name || userData.id || 'Unknown');
+
+        // Fetch profiles/channels
+        const profilesResponse = await fetch(
+          `${BUFFER_REST_API_URL}/profiles.json?access_token=${encodeURIComponent(accessToken)}`,
+          { signal: controller.signal }
+        );
+
+        let channels: Array<{ id: string; service: string; formatted_username: string }> = [];
+        if (profilesResponse.ok) {
+          const profilesData = await profilesResponse.json() as Array<Record<string, unknown>>;
+          if (Array.isArray(profilesData)) {
+            channels = profilesData.map(p => ({
+              id: String(p.id || ''),
+              service: String(p.service || ''),
+              formatted_username: String(p.formatted_username || p.service_username || ''),
+            }));
+          }
+        }
+
+        return { success: true, username, channels };
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: message };
+    }
+  }
+
   async schedulePost(captionText: string, videoUrl: string): Promise<PublishResult> {
     let lastError: string | undefined;
 
@@ -66,6 +127,7 @@ export class BufferPublisher implements IBufferPublisher {
           return {
             success: true,
             postId: result.createPost.post.id,
+            tiktokVideoLink: result.createPost.post.url || undefined,
             attempts: attempt,
           };
         }

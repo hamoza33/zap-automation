@@ -51,6 +51,8 @@ export interface PublishResult {
   postId?: string;
   error?: string;
   attempts: number;
+  tiktokVideoLink?: string;
+  bufferUsername?: string;
 }
 
 /**

@@ -62,6 +62,7 @@ interface RunningWorkflow {
   processedRows: Set<number>;
   errorMessage?: string;
   authenticated: boolean;
+  bufferUsername?: string;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
@@ -237,6 +238,18 @@ export class WorkflowManager {
         rw.authenticated = true;
       }
 
+      // Fetch and cache Buffer username
+      if (!rw.bufferUsername && rw.config.bufferAccessToken) {
+        try {
+          const testResult = await BufferPublisher.testConnection(rw.config.bufferAccessToken);
+          if (testResult.success && testResult.username) {
+            rw.bufferUsername = testResult.username;
+          }
+        } catch {
+          // Non-fatal - continue without username
+        }
+      }
+
       rw.status = 'running';
       rw.errorMessage = undefined;
       this.scheduleNextPoll(rw);
@@ -407,6 +420,8 @@ export class WorkflowManager {
             details: `Post scheduled (ID: ${publishResult.postId || 'N/A'})`,
             workflowId: rw.id,
             workflowName: rw.config.name,
+            tiktokVideoLink: publishResult.tiktokVideoLink || null,
+            bufferUsername: rw.bufferUsername || null,
           });
 
           try {

@@ -15,7 +15,16 @@ interface ActivityPageData {
 export function activityPage(data: ActivityPageData): string {
   const { entries, total, page, totalPages, statusFilter, workflowFilter, workflows } = data;
 
-  const rows = entries.map(a => `
+  const rows = entries.map(a => {
+    const tiktokLinkHtml = a.tiktokVideoLink
+      ? `<a href="${escapeHtml(a.tiktokVideoLink)}" target="_blank" rel="noopener" style="color: #e94560; text-decoration: none;">View Post</a>`
+      : '<span style="color: #555;">-</span>';
+
+    const bufferUsernameHtml = a.bufferUsername
+      ? escapeHtml(a.bufferUsername)
+      : '<span style="color: #555;">-</span>';
+
+    return `
     <tr>
       <td style="font-size: 0.85rem; color: #8888a0; white-space: nowrap;">${formatTimeFull(a.timestamp)}</td>
       <td style="font-size: 0.85rem; color: #e0e0e0;">${escapeHtml(a.workflowName || 'Unknown')}</td>
@@ -26,8 +35,11 @@ export function activityPage(data: ActivityPageData): string {
       </td>
       <td><span class="badge badge-${a.status}">${a.status}</span></td>
       <td style="font-size: 0.8rem; color: #8888a0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(a.details)}">${escapeHtml(a.details.substring(0, 50))}</td>
+      <td style="font-size: 0.85rem;">${tiktokLinkHtml}</td>
+      <td style="font-size: 0.85rem; color: #a0a0b0;">${bufferUsernameHtml}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   const filterOptions = ['all', 'success', 'error', 'failed', 'processing'].map(s => {
     const selected = s === statusFilter ? 'selected' : '';
@@ -79,6 +91,8 @@ export function activityPage(data: ActivityPageData): string {
                   <th>Video URL</th>
                   <th>Status</th>
                   <th>Details</th>
+                  <th>TikTok Link</th>
+                  <th>Buffer Account</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
