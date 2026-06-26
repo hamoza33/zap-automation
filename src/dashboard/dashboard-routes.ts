@@ -137,7 +137,8 @@ export function createDashboardRouter(workflowManager: WorkflowManager): Router 
 
   // GET /api/workflows/:id — get single workflow
   router.get('/api/workflows/:id', requireAuth, (req: Request, res: Response) => {
-    const workflow = workflowManager.getWorkflow(req.params.id);
+    const id = req.params.id as string;
+    const workflow = workflowManager.getWorkflow(id);
     if (!workflow) {
       res.status(404).json({ success: false, message: 'Workflow not found' });
       return;
@@ -147,6 +148,7 @@ export function createDashboardRouter(workflowManager: WorkflowManager): Router 
 
   // PUT /api/workflows/:id — update workflow
   router.put('/api/workflows/:id', requireAuth, async (req: Request, res: Response) => {
+    const id = req.params.id as string;
     const body = req.body as Record<string, unknown> | undefined;
     if (!body) {
       res.status(400).json({ success: false, message: 'No body provided' });
@@ -154,7 +156,7 @@ export function createDashboardRouter(workflowManager: WorkflowManager): Router 
     }
 
     try {
-      const updated = await workflowManager.updateWorkflow(req.params.id, {
+      const updated = await workflowManager.updateWorkflow(id, {
         name: body.name !== undefined ? String(body.name) : undefined,
         sheetId: body.sheetId !== undefined ? String(body.sheetId) : undefined,
         worksheetName: body.worksheetName !== undefined ? String(body.worksheetName) : undefined,
@@ -180,7 +182,8 @@ export function createDashboardRouter(workflowManager: WorkflowManager): Router 
 
   // DELETE /api/workflows/:id — delete workflow
   router.delete('/api/workflows/:id', requireAuth, async (req: Request, res: Response) => {
-    const deleted = await workflowManager.deleteWorkflow(req.params.id);
+    const id = req.params.id as string;
+    const deleted = await workflowManager.deleteWorkflow(id);
     if (!deleted) {
       res.status(404).json({ success: false, message: 'Workflow not found' });
       return;
@@ -190,9 +193,10 @@ export function createDashboardRouter(workflowManager: WorkflowManager): Router 
 
   // POST /api/workflows/:id/start — start workflow
   router.post('/api/workflows/:id/start', requireAuth, async (req: Request, res: Response) => {
-    const started = await workflowManager.startWorkflow(req.params.id);
+    const id = req.params.id as string;
+    const started = await workflowManager.startWorkflow(id);
     if (!started) {
-      const wf = workflowManager.getWorkflow(req.params.id);
+      const wf = workflowManager.getWorkflow(id);
       if (!wf) {
         res.status(404).json({ success: false, message: 'Workflow not found' });
       } else {
@@ -205,7 +209,8 @@ export function createDashboardRouter(workflowManager: WorkflowManager): Router 
 
   // POST /api/workflows/:id/stop — stop workflow
   router.post('/api/workflows/:id/stop', requireAuth, (req: Request, res: Response) => {
-    const stopped = workflowManager.stopWorkflow(req.params.id);
+    const id = req.params.id as string;
+    const stopped = workflowManager.stopWorkflow(id);
     if (!stopped) {
       res.status(404).json({ success: false, message: 'Workflow not found' });
       return;
@@ -215,7 +220,8 @@ export function createDashboardRouter(workflowManager: WorkflowManager): Router 
 
   // POST /api/workflows/:id/poll — trigger immediate poll
   router.post('/api/workflows/:id/poll', requireAuth, async (req: Request, res: Response) => {
-    const polled = await workflowManager.pollNow(req.params.id);
+    const id = req.params.id as string;
+    const polled = await workflowManager.pollNow(id);
     if (!polled) {
       res.status(404).json({ success: false, message: 'Workflow not found or failed to poll' });
       return;

@@ -1,0 +1,22 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Environment setup - install dependencies and verify the project builds and existing tests pass",
+  "status": "in_progress",
+  "steps": [
+    "Run npm install in /projects/sandbox/zap-automation",
+    "Run npx tsc --noEmit to confirm TypeScript compiles without errors",
+    "Run npx vitest --run to confirm existing tests pass"
+  ],
+  "acceptance_criteria": [
+    "npm install completes without errors",
+    "npx tsc --noEmit exits cleanly",
+    "npx vitest --run reports all tests passing"
+  ],
+  "verification": [
+    "npx tsc --noEmit",
+    "npx vitest --run"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

@@ -139,22 +139,87 @@ export class SheetPoller implements ISheetPoller {
   }
 
   /**
-   * Marks a row as "processing" locally. No longer writes to the sheet.
+   * Marks a row as "processing" by writing to the Status column in the sheet.
+   * Retries up to 3 times with a 1-second delay between attempts.
    */
   async markRowProcessing(rowNumber: number): Promise<void> {
-    // Just a no-op marker — we track completion in markRowProcessed
+    if (!this.doc) {
+      throw new Error('SheetPoller not authenticated. Call authenticate() first.');
+    }
+
+    const sheet = this.doc.sheetsByTitle[this.config.worksheetName];
+    if (!sheet) {
+      throw new Error(`Worksheet "${this.config.worksheetName}" not found in spreadsheet.`);
+    }
+
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const rows = await sheet.getRows();
+      const row = rows.find((r: any) => r.rowNumber === rowNumber);
+      if (!row) {
+        throw new Error(`Row ${rowNumber} not found in worksheet "${this.config.worksheetName}"`);
+      }
+
+      try {
+        row.set('Status', 'processing');
+        await row.save();
+        return;
+      } catch (err) {
+        if (attempt === maxAttempts) {
+          throw new Error(
+            `Failed to write status "processing" to row ${rowNumber} after ${maxAttempts} attempts: ${(err as Error).message}`
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
   }
 
   /**
-   * Marks a row as processed locally by adding its row number to the tracked set.
+   * Marks a row as processed by writing the status to the Status column in the sheet.
+   * Also tracks the row locally. Retries up to 3 times with a 1-second delay between attempts.
    */
   async markRowProcessed(
     rowNumber: number,
     status: 'success' | 'error' | 'failed',
-    _detail?: string
+    detail?: string
   ): Promise<void> {
-    processedRowNumbers.add(rowNumber);
-    saveProcessedRows(processedRowNumbers);
+    if (!this.doc) {
+      throw new Error('SheetPoller not authenticated. Call authenticate() first.');
+    }
+
+    const sheet = this.doc.sheetsByTitle[this.config.worksheetName];
+    if (!sheet) {
+      throw new Error(`Worksheet "${this.config.worksheetName}" not found in spreadsheet.`);
+    }
+
+    const statusValue = status === 'success'
+      ? 'success'
+      : `${status}:${detail || 'unknown'}`;
+
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const rows = await sheet.getRows();
+      const row = rows.find((r: any) => r.rowNumber === rowNumber);
+      if (!row) {
+        throw new Error(`Row ${rowNumber} not found in worksheet "${this.config.worksheetName}"`);
+      }
+
+      try {
+        row.set('Status', statusValue);
+        await row.save();
+        processedRowNumbers.add(rowNumber);
+        saveProcessedRows(processedRowNumbers);
+        return;
+      } catch (err) {
+        if (attempt === maxAttempts) {
+          throw new Error(
+            `Failed to write status "${statusValue}" to row ${rowNumber} after ${maxAttempts} attempts: ${(err as Error).message}`
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
   }
 
 }
