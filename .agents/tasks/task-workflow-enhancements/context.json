@@ -1,0 +1,26 @@
+{
+  "project_type": "Node.js/TypeScript automation service with Express server-rendered dashboard",
+  "language": "TypeScript",
+  "build_system": "npm with tsc for compilation, tsx for dev",
+  "test_framework": "vitest with --run flag, test files colocated as *.test.ts",
+  "build_command": "npx tsc --noEmit",
+  "test_command": "npx vitest --run",
+  "verification_instructions": "1. Run npx tsc --noEmit to check TypeScript compiles. 2. Run npx vitest --run to run all tests.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "npm install in /projects/sandbox/zap-automation",
+  "environment_constraints": "Node.js project, vitest for testing, no Docker daemon needed for verification - just tsc and vitest",
+  "contribution_requirements": "Standard TypeScript project - compile clean, tests pass",
+  "key_patterns": "Server-rendered HTML views (template functions returning strings in src/dashboard/views/). Express Router in dashboard-routes.ts. WorkflowManager class handles CRUD and poll cycles. ActivityEntry in activity-store.ts. Credentials saved as JSON files in credentials/ directory. Processed rows tracked per-workflow in processed-rows-{workflowId}.json files.",
+  "relevant_files": [
+    "src/dashboard/views/workflows.ts",
+    "src/dashboard/dashboard-routes.ts",
+    "src/workflows/workflow-manager.ts",
+    "src/dashboard/activity-store.ts",
+    "src/dashboard/views/activity.ts",
+    "src/dashboard/views/settings.ts",
+    "src/publisher/buffer-publisher.ts",
+    "src/poller/sheet-poller.ts",
+    "src/types.ts"
+  ],
+  "directory_structure": "src/config/ - config loading, src/dashboard/ - Express routes and HTML views, src/health/ - health check server, src/logger/ - structured logger, src/poller/ - Google Sheets polling, src/publisher/ - Buffer GraphQL client, src/service/ - automation orchestrator, src/validator/ - row validation, src/workflows/ - workflow manager"
+}

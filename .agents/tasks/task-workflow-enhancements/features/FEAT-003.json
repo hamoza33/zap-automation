@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Activity log enhancement (TikTok link + Buffer username) and Buffer API tester in settings",
+  "status": "completed",
+  "steps": [
+    "Step 1: Enhance the ActivityEntry interface in src/dashboard/activity-store.ts to include optional fields: tiktokVideoLink (string|null) and bufferUsername (string|null).",
+    "Step 2: Update the BufferPublisher in src/publisher/buffer-publisher.ts to return more data from the createPost mutation response. Modify the GraphQL mutation to request additional fields if available (like the post URL/link). Also add a method testConnection(accessToken?: string) that calls the Buffer API (e.g., GET https://api.buffer.com/v1/user.json or the GraphQL equivalent) to verify the token is valid and returns the user's name/username. This will be used for both the activity log (to show which Buffer account was used) and the API tester feature.",
+    "Step 3: Update the PublishResult interface in src/types.ts to include optional tiktokVideoLink and bufferUsername fields.",
+    "Step 4: In src/workflows/workflow-manager.ts executePollCycle, after a successful publish, pass the tiktokVideoLink and bufferUsername to the addActivity call. The bufferUsername should be fetched once when the workflow starts (cache it in RunningWorkflow) using the testConnection method.",
+    "Step 5: Update the activity view in src/dashboard/views/activity.ts to display the TikTok video link (as a clickable link in the details column or a new column) and the Buffer username. Show them in the table row when available.",
+    "Step 6: Create a Buffer API tester section. Since /settings currently redirects to /workflows, add a new page at /settings (remove the redirect) that contains a Buffer API Tester form. The form has: an input for Buffer Access Token, a 'Test Connection' button. When clicked, it calls POST /api/buffer-test with the token. The endpoint uses BufferPublisher.testConnection() to verify the token works and returns the account info (username, connected channels). Display success/failure result on the page.",
+    "Step 7: Add the POST /api/buffer-test endpoint in src/dashboard/dashboard-routes.ts. It accepts { accessToken: string } in the body, creates a temporary BufferPublisher or calls a static test method, and returns { success: boolean, username?: string, channels?: array, error?: string }.",
+    "Step 8: Update the settings view in src/dashboard/views/settings.ts to be the Buffer API Tester page (or create a new view). It should have a clean UI with an input field for the token, a test button, and a results area that shows success/failure with account details.",
+    "Step 9: Update the navigation/layout to show Settings as a link (not redirecting to workflows) in src/dashboard/views/layout.ts if it has a nav."
+  ],
+  "acceptance_criteria": [
+    "ActivityEntry has optional tiktokVideoLink and bufferUsername fields",
+    "The activity log table shows TikTok video link (clickable) and Buffer username when available",
+    "Buffer API tester page exists at /settings with a form to input and test a Buffer token",
+    "POST /api/buffer-test endpoint validates a Buffer token and returns account info",
+    "npx tsc --noEmit compiles cleanly",
+    "npx vitest --run passes"
+  ],
+  "verification": [
+    "npx tsc --noEmit",
+    "npx vitest --run"
+  ],
+  "blocked_reason": null,
+  "findings": "All 117 tests pass. TypeScript compiles cleanly with no errors. The settings view was completely rewritten from a generic settings form to a dedicated Buffer API Tester page. The old SettingsData interface and settingsPage(data) signature were replaced with a no-argument settingsPage() function."
+}
