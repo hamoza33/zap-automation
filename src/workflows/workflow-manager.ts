@@ -129,6 +129,23 @@ export class WorkflowManager {
     this.registerWorkflow(persisted);
     this.saveWorkflowsToDisk();
 
+    // Mark existing rows as processed so only new rows get published
+    const rw = this.workflows.get(id)!;
+    try {
+      await rw.poller.authenticate();
+      rw.authenticated = true;
+      const existingRowNumbers = await rw.poller.fetchAllRowNumbers();
+      for (const rowNum of existingRowNumbers) {
+        rw.processedRows.add(rowNum);
+      }
+      this.saveProcessedRows(id, rw.processedRows);
+    } catch (error) {
+      this.logger.warn(`Could not pre-mark existing rows for workflow "${config.name}"`, {
+        workflowId: id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     if (config.enabled) {
       await this.startWorkflow(id);
     }
@@ -141,6 +158,7 @@ export class WorkflowManager {
     if (!rw) return null;
 
     const wasRunning = rw.status === 'running';
+    const previousSheetId = rw.config.sheetId;
 
     // Stop if running
     if (wasRunning) {
@@ -168,6 +186,22 @@ export class WorkflowManager {
     const appConfig = this.toAppConfig(rw.config);
     rw.poller = new SheetPoller(appConfig);
     rw.publisher = new BufferPublisher(rw.config.bufferAccessToken, rw.config.bufferChannelId);
+
+    // If sheetId changed, reset processed rows with all current rows from new sheet
+    if (config.sheetId !== undefined && config.sheetId !== previousSheetId) {
+      try {
+        await rw.poller.authenticate();
+        rw.authenticated = true;
+        const existingRowNumbers = await rw.poller.fetchAllRowNumbers();
+        rw.processedRows = new Set(existingRowNumbers);
+        this.saveProcessedRows(id, rw.processedRows);
+      } catch (error) {
+        this.logger.warn(`Could not pre-mark existing rows after sheetId change for workflow "${rw.config.name}"`, {
+          workflowId: id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
 
     this.saveWorkflowsToDisk();
 

@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { readFileSync, existsSync } from 'node:fs';
 import {
   requireAuth,
   getDashboardPassword,
@@ -144,6 +145,29 @@ export function createDashboardRouter(workflowManager: WorkflowManager): Router 
       return;
     }
     res.json(workflow);
+  });
+
+  // GET /api/workflows/:id/credentials — get workflow credentials JSON
+  router.get('/api/workflows/:id/credentials', requireAuth, (req: Request, res: Response) => {
+    const id = req.params.id as string;
+    const workflow = workflowManager.getWorkflow(id);
+    if (!workflow) {
+      res.status(404).json({ success: false, message: 'Workflow not found' });
+      return;
+    }
+
+    const credPath = workflow.googleCredentialsPath;
+    if (!credPath || !existsSync(credPath)) {
+      res.status(404).json({ success: false, message: 'Credentials file not found' });
+      return;
+    }
+
+    try {
+      const credentials = readFileSync(credPath, 'utf-8');
+      res.json({ credentials });
+    } catch {
+      res.status(500).json({ success: false, message: 'Failed to read credentials file' });
+    }
   });
 
   // PUT /api/workflows/:id — update workflow

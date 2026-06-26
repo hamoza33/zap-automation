@@ -139,6 +139,24 @@ export class SheetPoller implements ISheetPoller {
   }
 
   /**
+   * Fetches all row numbers currently in the sheet, regardless of processed state.
+   * Used by WorkflowManager to pre-mark existing rows when creating or updating workflows.
+   */
+  async fetchAllRowNumbers(): Promise<number[]> {
+    if (!this.doc) {
+      throw new Error('SheetPoller not authenticated. Call authenticate() first.');
+    }
+
+    const sheet = this.doc.sheetsByTitle[this.config.worksheetName];
+    if (!sheet) {
+      throw new Error(`Worksheet "${this.config.worksheetName}" not found in spreadsheet.`);
+    }
+
+    const rows = await sheet.getRows();
+    return rows.map((row: any) => row.rowNumber);
+  }
+
+  /**
    * Marks a row as "processing" by writing to the Status column in the sheet.
    * Retries up to 3 times with a 1-second delay between attempts.
    */

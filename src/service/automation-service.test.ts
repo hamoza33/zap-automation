@@ -37,6 +37,7 @@ function createMockSheetPoller(): ISheetPoller {
   return {
     authenticate: vi.fn().mockResolvedValue(undefined),
     fetchUnprocessedRows: vi.fn().mockResolvedValue([]),
+    fetchAllRowNumbers: vi.fn().mockResolvedValue([]),
     markRowProcessing: vi.fn().mockResolvedValue(undefined),
     markRowProcessed: vi.fn().mockResolvedValue(undefined),
   };
